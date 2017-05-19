@@ -1,0 +1,101 @@
+app.py
+
+from flask import Flask
+import subprocess
+app = Flask(__name__)
+
+#mostra a aplicação no "/"
+@app.route("/")
+def hello():
+    return "<h1 style='color:green'> ae!!!</h1>"
+
+#retorna user: user
+#Uso:
+# http://ip:80/user/lucas
+@app.route('/user/<username>')
+def show_user_profile(username):
+    return "<marquee> User: %s</marquee>" % username
+
+#retorna post, somente aceitando numeros "int:"
+@app.route('/post/<int:post_id>')
+def show_post(post_id):
+    return 'Post %d' % post_id
+
+#retorna o hostname onde ele foi executado,
+#util para testar o funcionamento do cluster
+@app.route("/host")
+def host():
+    cmd = [ "hostname"]
+    p = subprocess.Popen(cmd, stdout = subprocess.PIPE,
+                              stderr = subprocess.PIPE,
+                              stdin = subprocess.PIPE)
+    out,err = p.communicate()
+    return out
+
+if __name__ == "__main__":
+    app.run()
+
+--------
+server.py
+
+from app import app
+
+# Import CherryPy
+import cherrypy
+
+if __name__ == '__main__':
+
+    # Mount the application
+    cherrypy.tree.graft(app, "/")
+
+    # Unsubscribe the default server
+    cherrypy.server.unsubscribe()
+
+    # Instantiate a new server object
+    server = cherrypy._cpserver.Server()
+
+    # Configure the server object
+    server.socket_host = "0.0.0.0"
+    server.socket_port = 80
+    server.thread_pool = 30
+
+    # For SSL Support
+    # server.ssl_module            = 'pyopenssl'
+    # server.ssl_certificate       = 'ssl/certificate.crt'
+    # server.ssl_private_key       = 'ssl/private.key'
+    # server.ssl_certificate_chain = 'ssl/bundle.crt'
+
+    # Subscribe this server
+    server.subscribe()
+
+    # Start the server engine (Option 1 *and* 2)
+
+    cherrypy.engine.start()
+    cherrypy.engine.block()
+
+---------
+
+Dockerfile:
+FROM centos
+
+RUN yum -y install python python-devel python-setuptools flask epel-release  && yum install -y python-pip && \
+ pip install cherrypy flask && mkdir -p /app && yum clean all
+
+ADD . /app
+
+EXPOSE 80
+
+#ENTRYPOINT ["python", "/app/server.py"]
+CMD ["python", "/app/server.py"]
+
+-----
+to install:
+yum install vim wget dialog net-tools -y
+yum install -y python python-devel python-setuptools flask
+yum install epel-release
+yum install python-pip
+pip install cherrypy
+pip install flask
+
+só ser feliz executando:
+python server.py
